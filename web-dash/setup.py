@@ -51,21 +51,27 @@ def find_key_by_value(list_a, list_b):
 # Function Create nodes and edges for creating graph
 def create_elements(sen1, sen2, relation, attack, nonattack, nodeinfo):
     elements = []
+    dup = []
+    nodes,edges = 0, 0
     # Nodes
     combined_list = [x for n in (sen1, sen2) for x in n]
     for i in combined_list:
-        elements.append({
-                'data': {'id': str(i), 'label': str(i)}
-            })
+        if i not in dup:
+            nodes+=1
+            elements.append({
+                    'data': {'id': str(i), 'label': str(i)}
+                })
+            dup.append(i)
 
     # Edges with different classes based on 'relation'
     for i in range(len(sen1)):
+        edges+=1
         if relation[i] == 1:
             rela = "Attack"
         elif relation[i] == 2:
-            rela = "Non-Attack (Support)"
+            rela = "Support"
         else:
-            rela = "Non-Attack (Neither)"
+            rela = "Neither"
         edge_data = {
             'data': {
                 'source': str(sen1[i]),
@@ -86,26 +92,36 @@ def create_elements(sen1, sen2, relation, attack, nonattack, nodeinfo):
         elif nonattack and relation[i] != 1:
             elements.append(edge_data)
 
-    return elements
+    return elements, nodes, edges
 
 def create_Acc_elements(sen1, sen2, relation, attack, nonattack, nodeinfo, satis):
     elements = []
+    acc = []
+    nodes, edges = 0, 0
     # Nodes
-    combined_list = [x for n in (sen1, sen2) for x in n]
-    for i in combined_list:
-        elements.append({
-                'data': {'id': str(i), 'label': str(i)}
+    for i in range(len(sen1)):
+        if satis[i]==1 and sen1[i] not in acc:
+            nodes+=1
+            elements.append({
+                'data': {'id': str(sen1[i]), 'label': str(sen1[i])}
             })
+            acc.append(sen1[i])
+    # combined_list = [x for n in (sen1, sen2) for x in n]
+    # for i in combined_list:
+    #     elements.append({
+    #             'data': {'id': str(i), 'label': str(i)}
+    #         })
 
     # Edges with different classes based on 'relation'
     for i in range(len(sen1)):
-        if satis[i]==1:
+        if sen1[i] in acc and sen2[i] in acc:
+            edges+=1
             if relation[i] == 1:
                 rela = "Attack"
             elif relation[i] == 2:
-                rela = "Non-Attack (Support)"
+                rela = "Support"
             else:
-                rela = "Non-Attack (Neither)"
+                rela = "Neither"
             edge_data = {
                 'data': {
                     'source': str(sen1[i]),
@@ -126,7 +142,7 @@ def create_Acc_elements(sen1, sen2, relation, attack, nonattack, nodeinfo, satis
             elif nonattack and relation[i] != 1:
                 elements.append(edge_data)
 
-    return elements
+    return elements, nodes, edges
 
 
 #Styles Sheet
@@ -232,8 +248,8 @@ app.layout = html.Div([
                             inline=True
                         ),
                         dcc.Checklist(
-                            ['Attack', 'Non-Attack'],
-                            ['Attack', 'Non-Attack'],
+                            ['Attack', 'Neither&Support'],
+                            ['Attack', 'Neither&Support'],
                             id='atkcheck',
                             inline=True
                         ),
@@ -245,7 +261,10 @@ app.layout = html.Div([
     html.Div(style=styles['graph_container'],children=[
         html.Div(children=[
             html.Div(style=styles['left-column'], children=[
-            html.P("Relation Graph: default")]),
+            html.P("Abstract Argumentation Graph: default"),
+            html.P(id='def_nodes'),
+            html.P(id='def_edges')
+            ]),
             cyto.Cytoscape(
                 id='graph_default',
                 style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -263,7 +282,10 @@ app.layout = html.Div([
             ]),
     html.Div(children=[
             html.Div(style=styles['right-column'], children=[
-            html.P("Acceptable Relation Graph: default")]),
+            html.P("Accepted Arguments (Non-deceptive Statement): default"),
+            html.P(id='Acc_def_nodes'),
+            html.P(id='Acc_def_edges')
+            ]),
             cyto.Cytoscape(
                 id='Acc_graph_default',
                 style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -281,7 +303,10 @@ app.layout = html.Div([
             ]),
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: Text davincii")]),
+        html.P("Abstract Argumentation Graph: Text davincii"),
+            html.P(id='davin_nodes'),
+            html.P(id='davin_edges')
+        ]),
         cyto.Cytoscape(
         id='graph_davincii',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -299,7 +324,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: Text davincii")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): Text davincii"),
+            html.P(id='Acc_davin_nodes'),
+            html.P(id='Acc_davin_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_davincii',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -319,7 +347,9 @@ app.layout = html.Div([
     
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: GPT 3.5")]),
+        html.P("Abstract Argumentation Graph: GPT 3.5"),
+            html.P(id='gpt35_nodes'),
+            html.P(id='gpt35_edges')]),
         cyto.Cytoscape(
         id='graph_gpt_35',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -337,7 +367,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: GPT 3.5")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): GPT 3.5"),
+            html.P(id='Acc_gpt35_nodes'),
+            html.P(id='Acc_gpt35_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_gpt_35',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -357,7 +390,9 @@ app.layout = html.Div([
     
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: GPT 3.5 version 0613")]),
+        html.P("Abstract Argumentation Graph: GPT 3.5 version 0613"),
+            html.P(id='gpt350613_nodes'),
+            html.P(id='gpt350613_edges')]),
         cyto.Cytoscape(
         id='graph_gpt_35_0613',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -376,7 +411,10 @@ app.layout = html.Div([
     
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: GPT 3.5 version 0613")]),
+            html.P("Accepted Arguments (Non-deceptive Statement): GPT 3.5 version 0613"),
+            html.P(id='Acc_gpt350613_nodes'),
+            html.P(id='Acc_gpt350613_edges')
+        ]),
         cyto.Cytoscape(
         id='Acc_graph_gpt_35_0613',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -394,7 +432,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: Support Vector Machines")]),
+        html.P("Abstract Argumentation Graph: Support Vector Machines"),
+            html.P(id='SVM_nodes'),
+            html.P(id='SVM_edges')
+        ]),
         cyto.Cytoscape(
         id='graph_SVM',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -412,7 +453,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: Support Vector Machines")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): Support Vector Machines"),
+            html.P(id='Acc_SVM_nodes'),
+            html.P(id='Acc_SVM_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_SVM',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -431,7 +475,10 @@ app.layout = html.Div([
     
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: Decision Tree")]),
+        html.P("Abstract Argumentation Graph: Decision Tree"),
+            html.P(id='Tree_nodes'),
+            html.P(id='Tree_edges')
+            ]),
         cyto.Cytoscape(
         id='graph_Tree',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -449,7 +496,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: Decision Tree")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): Decision Tree"),
+            html.P(id='Acc_Tree_nodes'),
+            html.P(id='Acc_Tree_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_Tree',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -467,7 +517,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: Naive Bayes")]),
+        html.P("Abstract Argumentation Graph: Naive Bayes"),
+            html.P(id='NB_nodes'),
+            html.P(id='NB_edges')
+            ]),
         cyto.Cytoscape(
         id='graph_NB',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -485,7 +538,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: Naive Bayes")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): Naive Bayes"),
+            html.P(id='Acc_NB_nodes'),
+            html.P(id='Acc_NB_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_NB',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -504,7 +560,14 @@ app.layout = html.Div([
     
     html.Div(children=[
         html.Div(style=styles['left-column'], children=[
-        html.P("Relation Graph: Logistic Regression")]),
+        html.P("Abstract Argumentation Graph: Logistic Regression"),
+            html.Div(
+        children=[
+            html.P(id='LR_nodes'),
+            html.P(id='LR_edges')
+        ]
+    )
+            ]),
         cyto.Cytoscape(
         id='graph_LR',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -522,7 +585,10 @@ app.layout = html.Div([
     ]),
     html.Div(children=[
         html.Div(style=styles['right-column'], children=[
-        html.P("Acceptable Relation Graph: Logistic Regression")]),
+        html.P("Accepted Arguments (Non-deceptive Statement): Logistic Regression"),
+            html.P(id='Acc_LR_nodes'),
+            html.P(id='Acc_LR_edges')
+            ]),
         cyto.Cytoscape(
         id='Acc_graph_LR',
         style={'display': 'flex', 'justify-content': 'center', 'align-items': 'center', 'height': '400px'},
@@ -635,12 +701,28 @@ def displayDescriptionNodeData(data):
     Output('graph_Tree', 'stylesheet'),
     Output('graph_NB', 'stylesheet'),
     Output('graph_LR', 'stylesheet'),
+    Output('def_nodes', 'children'),
+    Output('def_edges', 'children'),
+    Output('davin_nodes', 'children'),
+    Output('davin_edges', 'children'),
+    Output('gpt35_nodes', 'children'),
+    Output('gpt35_edges', 'children'),
+    Output('gpt350613_nodes', 'children'),
+    Output('gpt350613_edges', 'children'),
+    Output('SVM_nodes', 'children'),
+    Output('SVM_edges', 'children'),
+    Output('Tree_nodes', 'children'),
+    Output('Tree_edges', 'children'),
+    Output('NB_nodes', 'children'),
+    Output('NB_edges', 'children'),
+    Output('LR_nodes', 'children'),
+    Output('LR_edges', 'children'),
     Input('Topic_selection', 'value'),
     Input('atkcheck', 'value'),
     Input('infocheck', 'value'))
 def update_topic(topic_value, checklist_value, infocheck_value):
     attack = 'Attack' in checklist_value
-    nonattack = 'Non-Attack' in checklist_value
+    nonattack = 'Neither&Support' in checklist_value
     show_node_label = 'Node information' in infocheck_value
 
     if topic_value in output_data:
@@ -652,59 +734,82 @@ def update_topic(topic_value, checklist_value, infocheck_value):
         sen22 = output_data2[topic_value]['sentence_2']
         sen21, sen22 = find_key_by_value(sen21, sen22)
         
-        def_element = create_elements(sen21, sen22, output_data2[topic_value]['relation_BAF'], attack, nonattack, show_node_label)
-        devin_element = create_elements(sen21, sen22, output_data2[topic_value]['gpt_davinci'], attack, nonattack, show_node_label)
-        gpt35_element = create_elements(sen21, sen22, output_data2[topic_value]['gpt_35'], attack, nonattack, show_node_label)
-        gpt350613_element = create_elements(sen21, sen22, output_data2[topic_value]['gpt_35_0613'], attack, nonattack, show_node_label)
-        SVM_element = create_elements(sen21, sen22, output_data2[topic_value]['SVM'], attack, nonattack, show_node_label)
-        Tree_element = create_elements(sen21, sen22, output_data2[topic_value]['Decision_Tree'], attack, nonattack, show_node_label)
-        NB_element = create_elements(sen21, sen22, output_data2[topic_value]['Naive_Bayes'], attack, nonattack, show_node_label)
-        LR_element = create_elements(sen21, sen22, output_data2[topic_value]['LR'], attack, nonattack, show_node_label)
+        def_element, def_nodes, def_edges = create_elements(sen21, sen22, output_data2[topic_value]['relation_BAF'], attack, nonattack, show_node_label)
+        devin_element, devin_nodes, devin_edges = create_elements(sen21, sen22, output_data2[topic_value]['gpt_davinci'], attack, nonattack, show_node_label)
+        gpt35_element, gpt35_nodes, gpt35_edges = create_elements(sen21, sen22, output_data2[topic_value]['gpt_35'], attack, nonattack, show_node_label)
+        gpt350613_element, gpt350613_nodes, gpt350613_edges = create_elements(sen21, sen22, output_data2[topic_value]['gpt_35_0613'], attack, nonattack, show_node_label)
+        SVM_element, SVM_nodes, SVM_edges = create_elements(sen21, sen22, output_data2[topic_value]['SVM'], attack, nonattack, show_node_label)
+        Tree_element, Tree_nodes, Tree_edges = create_elements(sen21, sen22, output_data2[topic_value]['Decision_Tree'], attack, nonattack, show_node_label)
+        NB_element, NB_nodes, NB_edges = create_elements(sen21, sen22, output_data2[topic_value]['Naive_Bayes'], attack, nonattack, show_node_label)
+        LR_element, LR_nodes, LR_edges = create_elements(sen21, sen22, output_data2[topic_value]['LR'], attack, nonattack, show_node_label)
         # Use a default stylesheet or define a custom one based on your requirements
         default_stylesheet = [{
             'selector': 'node',
             'style': {'content': 'data(label)'}
+        },{
+            'selector': 'edge',
+            'style': {
+                # The default curve style does not work with certain arrows
+                'curve-style': 'bezier'
+            }
         },
         {
         'selector': '.red',
         'style': {
-            'background-color': 'red',
-            'line-color': 'red'
+            'target-arrow-color': 'red',
+            'target-arrow-shape': 'triangle',
+            'line-color': 'red',
+            'arrow-scale': 3,
         }},{
             'selector': '.green',
             'style': {
-                'background-color': 'green',
-                'line-color': 'green'
+                'target-arrow-color': 'green',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'green',
+                'arrow-scale': 2,
         }},{
             'selector': '.blue',
             'style': {
-                'background-color': 'blue',
-                'line-color': 'blue'
+                'target-arrow-color': 'blue',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'blue',
+                'arrow-scale': 2,
             }
         }]
 
         # Update the stylesheet based on the show_node_label condition
         stylesheet = default_stylesheet if show_node_label else [{
+            'selector': 'edge',
+            'style': {
+                # The default curve style does not work with certain arrows
+                'curve-style': 'bezier'
+            }
+        },{
         'selector': '.red',
         'style': {
-            'background-color': 'red',
-            'line-color': 'red'
+            'target-arrow-color': 'red',
+            'target-arrow-shape': 'triangle',
+            'line-color': 'red',
+            'arrow-scale': 3,
         }},{
             'selector': '.green',
             'style': {
-                'background-color': 'green',
-                'line-color': 'green'
+                'target-arrow-color': 'green',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'green',
+                'arrow-scale': 2,
         }},{
             'selector': '.blue',
             'style': {
-                'background-color': 'blue',
-                'line-color': 'blue'
+                'target-arrow-color': 'blue',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'blue',
+                'arrow-scale': 2,
             }
         }]
 
-        return def_element, devin_element, gpt35_element, gpt350613_element, stylesheet, stylesheet, stylesheet, stylesheet, SVM_element, Tree_element, NB_element, LR_element, stylesheet, stylesheet, stylesheet, stylesheet
-
-    return [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+        return def_element, devin_element, gpt35_element, gpt350613_element, stylesheet, stylesheet, stylesheet, stylesheet, SVM_element, Tree_element, NB_element, LR_element, stylesheet, stylesheet, stylesheet, stylesheet,f"nodes: {def_nodes}",f"edges: {def_edges}",f"nodes: {devin_nodes}", f"edges: {devin_edges}", f"nodes: {gpt35_nodes}", f"edges: {gpt35_edges}",f"nodes: {gpt350613_nodes}", f"edges: {gpt350613_edges}",f"nodes: {SVM_nodes}", f"edges: {SVM_edges}", f"nodes: {Tree_nodes}", f"edges: {Tree_edges}",f"nodes: {NB_nodes}", f"edges: {NB_edges}", f"nodes: {LR_nodes}", f"edges: {LR_edges}"
+    return [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0"
 
 #Call back Function to updating topic
 @app.callback(
@@ -724,72 +829,113 @@ def update_topic(topic_value, checklist_value, infocheck_value):
     Output('Acc_graph_Tree', 'stylesheet'),
     Output('Acc_graph_NB', 'stylesheet'),
     Output('Acc_graph_LR', 'stylesheet'),
+    
+    Output('Acc_def_nodes', 'children'),
+    Output('Acc_def_edges', 'children'),
+    Output('Acc_davin_nodes', 'children'),
+    Output('Acc_davin_edges', 'children'),
+    Output('Acc_gpt35_nodes', 'children'),
+    Output('Acc_gpt35_edges', 'children'),
+    Output('Acc_gpt350613_nodes', 'children'),
+    Output('Acc_gpt350613_edges', 'children'),
+    Output('Acc_SVM_nodes', 'children'),
+    Output('Acc_SVM_edges', 'children'),
+    Output('Acc_Tree_nodes', 'children'),
+    Output('Acc_Tree_edges', 'children'),
+    Output('Acc_NB_nodes', 'children'),
+    Output('Acc_NB_edges', 'children'),
+    Output('Acc_LR_nodes', 'children'),
+    Output('Acc_LR_edges', 'children'),
+    
     Input('Topic_selection', 'value'),
     Input('atkcheck', 'value'),
     Input('infocheck', 'value'))
 def update_acc_topic(topic_value, checklist_value, infocheck_value):
     attack = 'Attack' in checklist_value
-    nonattack = 'Non-Attack' in checklist_value
+    nonattack = 'Neither&Support' in checklist_value
     show_node_label = 'Node information' in infocheck_value
 
     if topic_value in output_data2:
         sen1 = output_data2[topic_value]['sentence_1']
         sen2 = output_data2[topic_value]['sentence_2']
         sen1, sen2 = find_key_by_value(sen1, sen2)
-        def_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['relation_AAF'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_relation_AAF'])
-        devin_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_davinci'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_davinci'])
-        gpt35_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_35'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_35'])
-        gpt350613_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_35_0613'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_35_0613'])
+        def_element,Acc_def_nodes,Acc_def_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['relation_AAF'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_relation_AAF'])
+        devin_element,Acc_devin_nodes,Acc_devin_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_davinci'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_davinci'])
+        gpt35_element,Acc_gpt35_nodes,Acc_gpt35_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_35'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_35'])
+        gpt350613_element,Acc_gpt350613_nodes,Acc_gpt350613_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['gpt_35_0613'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_gpt_35_0613'])
         
-        SVM_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['SVM'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_SVM'])
-        Tree_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['Decision_Tree'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_Decision_Tree'])
-        NB_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['Naive_Bayes'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_Naive_Bayes'])
-        LR_element = create_Acc_elements(sen1, sen2, output_data2[topic_value]['LR'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_LR'])
+        SVM_element,Acc_SVM_nodes,Acc_SVM_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['SVM'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_SVM'])
+        Tree_element,Acc_Tree_nodes,Acc_Tree_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['Decision_Tree'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_Decision_Tree'])
+        NB_element,Acc_NB_nodes,Acc_NB_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['Naive_Bayes'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_Naive_Bayes'])
+        LR_element,Acc_LR_nodes,Acc_LR_edges = create_Acc_elements(sen1, sen2, output_data2[topic_value]['LR'], attack, nonattack, show_node_label,output_data2[topic_value]['satis_LR'])
         # Use a default stylesheet or define a custom one based on your requirements
         default_stylesheet = [{
             'selector': 'node',
             'style': {'content': 'data(label)'}
+        },{
+            'selector': 'edge',
+            'style': {
+                # The default curve style does not work with certain arrows
+                'curve-style': 'bezier'
+            }
         },
         {
         'selector': '.red',
         'style': {
-            'background-color': 'red',
-            'line-color': 'red'
+            'target-arrow-color': 'red',
+            'target-arrow-shape': 'triangle',
+            'line-color': 'red',
+            'arrow-scale': 3,
         }},{
             'selector': '.green',
             'style': {
-                'background-color': 'green',
-                'line-color': 'green'
+                'target-arrow-color': 'green',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'green',
+                'arrow-scale': 2,
         }},{
             'selector': '.blue',
             'style': {
-                'background-color': 'blue',
-                'line-color': 'blue'
+                'target-arrow-color': 'blue',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'blue',
+                'arrow-scale': 2,
             }
         }]
 
         # Update the stylesheet based on the show_node_label condition
         stylesheet = default_stylesheet if show_node_label else [{
+            'selector': 'edge',
+            'style': {
+                # The default curve style does not work with certain arrows
+                'curve-style': 'bezier'
+            }
+        },{
         'selector': '.red',
         'style': {
-            'background-color': 'red',
-            'line-color': 'red'
+            'target-arrow-color': 'red',
+            'target-arrow-shape': 'triangle',
+            'line-color': 'red',
+            'arrow-scale': 3,
         }},{
             'selector': '.green',
             'style': {
-                'background-color': 'green',
-                'line-color': 'green'
+                'target-arrow-color': 'green',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'green',
+                'arrow-scale': 2,
         }},{
             'selector': '.blue',
             'style': {
-                'background-color': 'blue',
-                'line-color': 'blue'
+                'target-arrow-color': 'blue',
+                'target-arrow-shape': 'triangle',
+                'line-color': 'blue',
+                'arrow-scale': 2,
             }
         }]
 
-        return def_element, devin_element, gpt35_element, gpt350613_element, SVM_element, Tree_element, NB_element, LR_element, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet
-
-    return [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []
+        return def_element, devin_element, gpt35_element, gpt350613_element, SVM_element, Tree_element, NB_element, LR_element, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet, stylesheet,f"nodes: {Acc_def_nodes}",f"edges: {Acc_def_edges}",f"nodes: {Acc_devin_nodes}", f"edges: {Acc_devin_edges}", f"nodes: {Acc_gpt35_nodes}", f"edges: {Acc_gpt35_edges}",f"nodes: {Acc_gpt350613_nodes}", f"edges: {Acc_gpt350613_edges}",f"nodes: {Acc_SVM_nodes}", f"edges: {Acc_SVM_edges}", f"nodes: {Acc_Tree_nodes}", f"edges: {Acc_Tree_edges}",f"nodes: {Acc_NB_nodes}", f"edges: {Acc_NB_edges}", f"nodes: {Acc_LR_nodes}", f"edges: {Acc_LR_edges}"
+    return [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0", f"nodes: 0", f"edges: 0"
 
 
 #Call back Function to display node's sentences
